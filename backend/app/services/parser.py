@@ -208,13 +208,20 @@ def deterministic_parse(raw_text: str) -> ReportAnalysis:
     if attention_items:
         questions.insert(0, f"What might be contributing to my {attention_items[0].name} reading of {attention_items[0].value} {attention_items[0].unit}?")
 
+    is_clarity_issue = len(parameters) == 0
+    clarity_assessment = (
+        "Report typography is unclear or missing standard parameter rows. Please consult a qualified clinician."
+        if is_clarity_issue
+        else "Standard clinical typography detected"
+    )
+
     return ReportAnalysis(
         report_title=title,
         report_date="",
         patient_demographics="",
         overview_summary=overview,
-        clarity_assessment="Standard clinical typography detected",
-        is_clarity_issue=False,
+        clarity_assessment=clarity_assessment,
+        is_clarity_issue=is_clarity_issue,
         key_findings=key_findings,
         parameters=parameters,
         questions_for_doctor=questions[:4],

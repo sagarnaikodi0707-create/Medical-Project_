@@ -103,9 +103,8 @@ async def run_bot():
         return
 
     # Import processing pipeline (lazy to avoid circular imports)
-    from app.services.extractor import extract_text_from_document
-    from app.services.gemini_service import analyze_report_with_gemini
-    from app.services.parser import parse_report_fallback
+    from app.services.extractor import extract_document
+    from app.services.parser import process_report_analysis
 
     async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(WELCOME_MESSAGE, parse_mode="Markdown")
@@ -169,10 +168,12 @@ async def run_bot():
             with open(tmp_path, "rb") as f:
                 file_bytes = f.read()
 
-            extracted_text = extract_text_from_document(
+            doc_result = extract_document(
                 file_bytes=file_bytes,
                 filename=file_name,
                 content_type=mime_type,
+            )
+            extracted_text = doc_result.get("text", "")
             )
 
             if not extracted_text or len(extracted_text.strip()) < 20:
@@ -183,17 +184,16 @@ async def run_bot():
                 )
                 return
 
-            # Analyze
-            analysis = analyze_report_with_gemini(extracted_text)
-            if not analysis:
-                analysis = parse_report_fallback(extracted_text)
-
-            if not analysis:
+            # Analyze using orchestrated pipeline (Gemini with deterministic fallback)
+            analysis_obj = process_report_analysis(extracted_text)
+            if not analysis_obj:
                 await message.reply_text(
                     "⚠️ Could not analyze this report. Please consult your healthcare provider directly.",
                     parse_mode="Markdown"
                 )
                 return
+
+            analysis = analysis_obj.model_dump()
 
             reply = _format_bot_reply(analysis)
             # Telegram message max 4096 chars
